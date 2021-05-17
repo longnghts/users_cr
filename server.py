@@ -1,4 +1,5 @@
 from flask import Flask, render_template, redirect, session, request, flash
+from werkzeug import datastructures
 from msqlConnection import connectToMySQL
 app = Flask(__name__)
 @app.route("/users")
@@ -9,10 +10,9 @@ def index():
     return render_template("index.html", allUsers = users)
             
 @app.route('/users/new')
-def method_name():
+def newUser():
     return render_template('indexCreate.html')
 
-    
 @app.route('/users/add', methods = ['POST'])
 def indexCreate():
     print(request.form)
@@ -23,12 +23,57 @@ def indexCreate():
         "email":request.form['email'],
     }
     mysql = connectToMySQL('users_schema')
+    id = mysql.query_db(query, data)
+    return redirect(f'/users/{id}')
+
+@app.route('/users/<id>')
+def viewUser(id):
+    query = 'SELECT * FROM users WHERE id = %(user_id)s;'
+    data = {
+        'user_id': int(id)
+    }
+    mysql = connectToMySQL('users_schema')
+    user = mysql.query_db(query, data)
+    return render_template('indexShow.html', user = user[0])
+    
+
+
+@app.route('/users/<id>/destroy')
+def deleteUser(id):
+    query = 'DELETE FROM users WHERE id = %(user_id)s;'
+    data = {
+        'user_id': int(id)        
+    }
+    
+    mysql = connectToMySQL('users_schema')
     mysql.query_db(query, data)
+
     return redirect('/users')
+    
+@app.route('/users/<id>/edit')
+def editUser(id):
+    query = 'SELECT * FROM users WHERE id = %(user_id)s;'
+    data = {
+        'user_id': int(id)
+    }
+    mysql = connectToMySQL('users_schema')
+    user = mysql.query_db(query, data)
+    return render_template('indexEdit.html', user = user[0])
+    
 
-
-
-
+@app.route('/users/<id>/update', methods = ['POST'])
+def indexEdit(id):
+    print(request.form)
+    query = 'UPDATE users SET firstName = %(fname)s, lastName = %(lname)s, email = %(email)s, updatedAt = NOW() WHERE id = %(userID)s;'
+    data = {
+        "userID": int(id),
+        "fname":request.form['first_name'],
+        "lname":request.form['last_name'],
+        "email":request.form['email'],
+    }
+    mysql = connectToMySQL('users_schema')
+    mysql.query_db(query, data)
+    return redirect(f'/users/{id}')
 
 if __name__ == "__main__":
     app.run(debug=True)
